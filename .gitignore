@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+.env
+wayfumo_post.png
+xoauth2.txt
