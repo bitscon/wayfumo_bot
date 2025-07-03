@@ -1,17 +1,19 @@
 # WAYFUMO Bot 🤖🔥
 
-WAYFUMO (**What Are You A F***ing Moron?**) is an automated savage roast bot that scrapes Reddit posts, summarizes them into savage roasts via your local Ollama AI, generates branded images, and posts them to X (Twitter).
+WAYFUMO (**What Are You A F***ing Moron?**) is an automated witty roast bot that scrapes Reddit posts, generates comedic roasts via your local Ollama AI, creates branded images with configurable generators, and posts them to social media platforms like X (Twitter) and TikTok.
 
 ---
 
 ## 🚀 Features
 
-✅ Scrapes top posts from **r/AmItheAsshole**  
-✅ Generates savage, short roasts using **local Ollama LLM**  
-✅ Creates branded square images for social posting  
-✅ Posts directly to your verified X account  
+✅ Scrapes posts from **r/AmItheAsshole**  
+✅ Generates witty roasts using **local Ollama LLM**  
+✅ Creates branded images with configurable **image generators**  
+✅ Posts to X (Twitter) with media uploads  
+✅ Modular architecture for adding **TikTok and other platforms**  
+✅ Configurable platform toggles to enable/disable posting per platform  
 ✅ Designed for **Linux (Debian)** environments  
-✅ Easily extensible to Mastodon, Bluesky, YouTube Shorts, and IG Reels
+✅ Easily extensible for AI video generation or Shorts/Reels workflows
 
 ---
 
@@ -20,7 +22,7 @@ WAYFUMO (**What Are You A F***ing Moron?**) is an automated savage roast bot tha
 - Python 3.10+
 - Reddit API credentials
 - X (Twitter) API credentials (OAuth 1.0a)
-- [Ollama](https://ollama.com/) running locally (tested with llama3:8b)
+- [Ollama](https://ollama.com/) running locally (`llama3.2:latest` model)
 - pip packages: \`praw tweepy pillow requests python-dotenv\`
 
 ---
@@ -55,6 +57,12 @@ X_API_KEY=your_x_api_key
 X_API_SECRET=your_x_api_secret
 X_ACCESS_TOKEN=your_x_access_token
 X_ACCESS_SECRET=your_x_access_secret
+
+# TikTok API credentials (currently unused)
+TIKTOK_CLIENT_KEY=
+TIKTOK_CLIENT_SECRET=
+TIKTOK_ACCESS_TOKEN=
+TIKTOK_ACCESS_SECRET=
 \`\`\`
 
 ---
@@ -70,33 +78,41 @@ python wayfumo_bot.py
 
 This will:
 
-1. Fetch a Reddit post  
-2. Generate a savage roast via Ollama  
-3. Create a shareable roast image  
-4. Post it to X (Twitter)
+1. Fetch a random Reddit post  
+2. Generate a witty roast via Ollama  
+3. Create an image using your configured generator  
+4. Post to enabled platforms (e.g. X) with toggles defined in \`wayfumo_bot.py\`
 
 ---
 
 ## 📝 Configuration
 
-- **Ollama Model:** Update \`OLLAMA_MODEL\` in \`wayfumo_bot.py\` to match your installed model (\`ollama list\`).  
-- **Subreddits:** Modify \`get_moronic_post()\` for different or multiple subreddit scraping.
+- **Platform toggles:** \`POST_TO_X\`, \`POST_TO_TIKTOK\` in \`wayfumo_bot.py\`  
+- **Image creation toggle:** \`CREATE_IMAGE\` in \`wayfumo_bot.py\`  
+- **Image generator selection:** Edit \`image_config.py\` to select:
+
+  - \`pillow\` (default text image)  
+  - \`dalle\` (future DALL-E integration)  
+  - \`stablediffusion\` (future SD integration)
+
+- **Ollama Model:** Uses \`llama3.2:latest\` by default (update in \`wayfumo_bot.py\` if you deploy newer models).
 
 ---
 
 ## 🛠️ Roadmap
 
-- [ ] Automate via cron for daily posts  
-- [ ] Batch multiple roasts for scheduling  
-- [ ] Integrate Mastodon and Bluesky posting  
-- [ ] Build a YouTube Shorts pipeline for roast videos  
-- [ ] Add meme overlays or video templates for Shorts/Reels
+- [ ] Implement TikTok posting integration  
+- [ ] Add DALL-E and Stable Diffusion image generation  
+- [ ] Automate daily cron runs  
+- [ ] Build YouTube Shorts pipeline for roast videos  
+- [ ] Rotate hashtags and CTAs dynamically  
+- [ ] Modularize multi-subreddit sourcing for maximum variety
 
 ---
 
 ## ⚠️ Disclaimer
 
-WAYFUMO is a savage comedic bot project intended for entertainment. Use responsibly. All opinions generated are AI-based roasts and do not reflect the creator's personal views.
+WAYFUMO is a comedic roast bot project intended for entertainment. Use responsibly. All opinions generated are AI-based roasts and do not reflect the creator's personal views.
 
 ---
 
@@ -108,7 +124,7 @@ MIT License
 
 ## ✨ Contributing
 
-PRs and savage roast script enhancements are welcome.
+PRs and witty roast script enhancements are welcome.
 
 ---
 
@@ -127,4 +143,4 @@ Built with ❤️ by [bitscon](https://github.com/bitscon) using:
 
 > **What Are You A F***ing Moron?**
 
-Bringing savage AI roasts to your feed daily.
+Bringing witty AI roasts to your feed daily.
