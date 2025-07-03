@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import random
 import praw
 import requests
 import tweepy
@@ -14,8 +15,10 @@ load_dotenv()
 
 # ========== CONFIGURATION ==========
 
-# Toggle image creation
+# Toggle platform posting
 CREATE_IMAGE = True
+POST_TO_X = True
+POST_TO_TIKTOK = False  # Future implementation toggle
 
 # Reddit API credentials
 reddit = praw.Reddit(
@@ -24,7 +27,7 @@ reddit = praw.Reddit(
     user_agent=os.getenv("REDDIT_USER_AGENT")
 )
 
-# X API credentials (v2 Client for tweeting)
+# X (Twitter) API credentials
 client = tweepy.Client(
     consumer_key=os.getenv("X_API_KEY"),
     consumer_secret=os.getenv("X_API_SECRET"),
@@ -32,7 +35,6 @@ client = tweepy.Client(
     access_token_secret=os.getenv("X_ACCESS_SECRET")
 )
 
-# X API credentials (v1.1 API for media upload)
 auth = tweepy.OAuth1UserHandler(
     os.getenv("X_API_KEY"),
     os.getenv("X_API_SECRET"),
@@ -41,18 +43,29 @@ auth = tweepy.OAuth1UserHandler(
 )
 api = tweepy.API(auth)
 
+# TikTok API credentials (placeholder)
+TIKTOK_CLIENT_KEY = os.getenv("TIKTOK_CLIENT_KEY")
+TIKTOK_CLIENT_SECRET = os.getenv("TIKTOK_CLIENT_SECRET")
+TIKTOK_ACCESS_TOKEN = os.getenv("TIKTOK_ACCESS_TOKEN")
+TIKTOK_ACCESS_SECRET = os.getenv("TIKTOK_ACCESS_SECRET")
+
 # Ollama endpoint
 OLLAMA_URL = "http://ai:11434/api/generate"
-OLLAMA_MODEL = "llama3.2:latest"  # adjust to match your installed model
+OLLAMA_MODEL = "llama3.2:latest"  # current deployed model
 
 # ========== FUNCTIONS ==========
 
 def get_moronic_post():
     subreddit = reddit.subreddit("AmItheAsshole")
-    for post in subreddit.hot(limit=10):
-        if not post.stickied and len(post.selftext) > 50:
-            return post.title + "\n\n" + post.selftext
-    return "No suitable post found."
+    posts = [
+        post for post in subreddit.hot(limit=25)
+        if not post.stickied and len(post.selftext) > 50
+    ]
+    if posts:
+        selected_post = random.choice(posts)
+        return selected_post.title + "\n\n" + selected_post.selftext
+    else:
+        return "No suitable post found."
 
 def summarize_roast(text):
     with open("prompt_template.txt", "r") as f:
@@ -75,8 +88,16 @@ def post_to_x(text, image_path=None):
             client.create_tweet(text=text, media_ids=[media.media_id])
         else:
             client.create_tweet(text=text)
+        print("✅ Posted to X successfully.")
     except Exception as e:
-        print("⚠️ Posting failed. Error:", e)
+        print("⚠️ Posting to X failed. Error:", e)
+
+def post_to_tiktok(text, image_path=None):
+    """
+    Placeholder TikTok posting function.
+    Currently not implemented. TikTok API integration requires OAuth, client key, and media endpoints.
+    """
+    print("⚠️ TikTok posting is disabled or not implemented yet.")
 
 # ========== MAIN EXECUTION ==========
 
@@ -97,6 +118,14 @@ if __name__ == "__main__":
     else:
         print("⚠️ Image creation disabled by config.")
 
-    print("🐦 Posting to X...")
-    post_to_x(roast, img_path)
-    print("✅ Posted to X successfully.")
+    if POST_TO_X:
+        print("🐦 Posting to X...")
+        post_to_x(roast, img_path)
+    else:
+        print("⚠️ X posting disabled by config.")
+
+    if POST_TO_TIKTOK:
+        print("🎵 Posting to TikTok...")
+        post_to_tiktok(roast, img_path)
+    else:
+        print("⚠️ TikTok posting disabled by config.")
