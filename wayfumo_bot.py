@@ -4,14 +4,18 @@ import os
 import praw
 import requests
 import tweepy
-from PIL import Image, ImageDraw, ImageFont
-import textwrap
 from dotenv import load_dotenv
+
+# Import image creator module
+import image_creator
 
 # ========== LOAD ENV VARIABLES ==========
 load_dotenv()
 
 # ========== CONFIGURATION ==========
+
+# Toggle image creation
+CREATE_IMAGE = True
 
 # Reddit API credentials
 reddit = praw.Reddit(
@@ -39,7 +43,7 @@ api = tweepy.API(auth)
 
 # Ollama endpoint
 OLLAMA_URL = "http://ai:11434/api/generate"
-OLLAMA_MODEL = "llama3.1:latest"  # adjust to match your installed model
+OLLAMA_MODEL = "llama3.2:latest"  # adjust to match your installed model
 
 # ========== FUNCTIONS ==========
 
@@ -51,11 +55,8 @@ def get_moronic_post():
     return "No suitable post found."
 
 def summarize_roast(text):
-    prompt = f"""
-You are WAYFUMO, a savage sarcasm bot. Summarize this Reddit post into a short, savage roast under 280 characters. End with 'WAYFUMO.'
-
-{text}
-"""
+    with open("prompt_template.txt", "r") as f:
+        prompt = f.read().replace("{{POST_CONTENT}}", text)
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
@@ -65,26 +66,17 @@ You are WAYFUMO, a savage sarcasm bot. Summarize this Reddit post into a short, 
     if response.ok:
         return response.json()["response"].strip()
     else:
-        return "Failed to generate roast. WAYFUMO."
+        return "Failed to generate roast. What are ya, a F'n Moron?. #wayfumo #roast #reddit"
 
-def create_image(text, output_path="wayfumo_post.png"):
-    img = Image.new('RGB', (1080, 1080), color=(30, 30, 30))
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
-    lines = textwrap.wrap(text, width=20)
-    y_text = 200
-    for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font)
-        width = bbox[2] - bbox[0]
-        height = bbox[3] - bbox[1]
-        draw.text(((1080 - width) / 2, y_text), line, font=font, fill=(255, 255, 255))
-        y_text += height + 10
-    img.save(output_path)
-    return output_path
-
-def post_to_x(text, image_path):
-    media = api.media_upload(image_path)
-    client.create_tweet(text=text, media_ids=[media.media_id])
+def post_to_x(text, image_path=None):
+    try:
+        if image_path:
+            media = api.media_upload(image_path)
+            client.create_tweet(text=text, media_ids=[media.media_id])
+        else:
+            client.create_tweet(text=text)
+    except Exception as e:
+        print("⚠️ Posting failed. Error:", e)
 
 # ========== MAIN EXECUTION ==========
 
@@ -97,9 +89,13 @@ if __name__ == "__main__":
     roast = summarize_roast(post_text)
     print("✅ Roast generated:", roast)
 
-    print("🖼️ Creating image...")
-    img_path = create_image(roast)
-    print("✅ Image created:", img_path)
+    img_path = None
+    if CREATE_IMAGE:
+        print("🖼️ Creating image...")
+        img_path = image_creator.create_image(roast)
+        print("✅ Image created:", img_path)
+    else:
+        print("⚠️ Image creation disabled by config.")
 
     print("🐦 Posting to X...")
     post_to_x(roast, img_path)

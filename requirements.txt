@@ -1,0 +1,5 @@
+praw==7.8.1
+tweepy==4.16.0
+requests==2.32.4
+pillow>=9.0.1
+python-dotenv==1.1.0
