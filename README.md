@@ -8,12 +8,15 @@ WAYFUMO (**What Are You A F***ing Moron?**) is an automated witty roast bot that
 
 ✅ Scrapes posts from **r/AmItheAsshole**  
 ✅ Generates witty roasts using **local Ollama LLM**  
-✅ Creates branded images with configurable **image generators**  
+✅ Includes **Reddit post URL** in roasts for reference and credibility  
+✅ Creates branded images with configurable **image generators** (Pillow, future DALL-E/SD)  
 ✅ Posts to X (Twitter) with media uploads  
 ✅ Modular architecture for adding **TikTok and other platforms**  
-✅ Configurable platform toggles to enable/disable posting per platform  
+✅ Platform toggles (`POST_TO_X`, `POST_TO_TIKTOK`) in `wayfumo_bot.py`  
+✅ Configurable image generator toggle in `image_config.py`  
 ✅ Designed for **Linux (Debian)** environments  
-✅ Easily extensible for AI video generation or Shorts/Reels workflows
+✅ Supports **cron job automation** with logging  
+✅ Cleaned prompt template instructions for consistent output
 
 ---
 
@@ -80,8 +83,9 @@ This will:
 
 1. Fetch a random Reddit post  
 2. Generate a witty roast via Ollama  
-3. Create an image using your configured generator  
-4. Post to enabled platforms (e.g. X) with toggles defined in \`wayfumo_bot.py\`
+3. Append the Reddit post URL if missing  
+4. Create an image using your configured generator (if enabled)  
+5. Post to enabled platforms (e.g. X) with toggles defined in \`wayfumo_bot.py\`
 
 ---
 
@@ -99,11 +103,46 @@ This will:
 
 ---
 
+## 🔄 Automation
+
+To run daily via cron:
+
+1. Create \`run_wayfumo.sh\`:
+
+\`\`\`bash
+#!/bin/bash
+cd /home/billybs/projects/wayfumo_bot
+source venv/bin/activate
+python wayfumo_bot.py >> cron_wayfumo.log 2>&1
+\`\`\`
+
+2. Make executable:
+
+\`\`\`bash
+chmod +x run_wayfumo.sh
+\`\`\`
+
+3. Edit crontab:
+
+\`\`\`bash
+crontab -e
+\`\`\`
+
+Add:
+
+\`\`\`
+0 8 * * * /home/billybs/projects/wayfumo_bot/run_wayfumo.sh
+\`\`\`
+
+✅ Adjust time as needed.
+
+---
+
 ## 🛠️ Roadmap
 
 - [ ] Implement TikTok posting integration  
 - [ ] Add DALL-E and Stable Diffusion image generation  
-- [ ] Automate daily cron runs  
+- [ ] Automate daily cron runs with email notifications  
 - [ ] Build YouTube Shorts pipeline for roast videos  
 - [ ] Rotate hashtags and CTAs dynamically  
 - [ ] Modularize multi-subreddit sourcing for maximum variety

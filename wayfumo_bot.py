@@ -16,7 +16,7 @@ load_dotenv()
 # ========== CONFIGURATION ==========
 
 # Toggle platform posting
-CREATE_IMAGE = True
+CREATE_IMAGE = False
 POST_TO_X = True
 POST_TO_TIKTOK = False  # Future implementation toggle
 
@@ -63,13 +63,16 @@ def get_moronic_post():
     ]
     if posts:
         selected_post = random.choice(posts)
-        return selected_post.title + "\n\n" + selected_post.selftext
+        return {
+            "text": selected_post.title + "\n\n" + selected_post.selftext,
+            "url": selected_post.url
+        }
     else:
-        return "No suitable post found."
+        return {"text": "No suitable post found.", "url": ""}
 
-def summarize_roast(text):
+def summarize_roast(post):
     with open("prompt_template.txt", "r") as f:
-        prompt = f.read().replace("{{POST_CONTENT}}", text)
+        prompt = f.read().replace("{{POST_CONTENT}}", post["text"]).replace("{{POST_URL}}", post["url"])
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
@@ -77,9 +80,13 @@ def summarize_roast(text):
     }
     response = requests.post(OLLAMA_URL, json=payload)
     if response.ok:
-        return response.json()["response"].strip()
+        roast = response.json()["response"].strip()
+        # Ensure URL is included
+        if post["url"] not in roast:
+            roast += f" {post['url']}"
+        return roast
     else:
-        return "Failed to generate roast. What are ya, a F'n Moron?. #wayfumo #roast #reddit"
+        return f"Failed to generate roast. What are ya, a F'n Moron?. {post['url']} #wayfumo #roast #reddit"
 
 def post_to_x(text, image_path=None):
     try:
@@ -103,11 +110,11 @@ def post_to_tiktok(text, image_path=None):
 
 if __name__ == "__main__":
     print("🔎 Fetching Reddit post...")
-    post_text = get_moronic_post()
+    post = get_moronic_post()
     print("✅ Post fetched.")
 
     print("🧠 Generating WAYFUMO roast via Ollama...")
-    roast = summarize_roast(post_text)
+    roast = summarize_roast(post)
     print("✅ Roast generated:", roast)
 
     img_path = None
