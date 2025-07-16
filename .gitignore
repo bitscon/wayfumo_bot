@@ -4,3 +4,4 @@ __pycache__/
 .env
 wayfumo_post.png
 xoauth2.txt
+cron_wayfumo.log
