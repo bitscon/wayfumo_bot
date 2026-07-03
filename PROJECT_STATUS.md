@@ -1,7 +1,7 @@
 # PROJECT STATUS
 
 ## Current State
-Registered python-runtime bot; deployed on the barn via systemd user timer, running in DRY_RUN (builds posts, does not post to X). Offline unit test suite passing via `make test-fast`.
+Registered python-runtime bot; deployed on the barn via systemd user timer, running in DRY_RUN (builds posts, does not post to X). Offline unit test suite passing via `make test-fast`. Placeholder website live at http://wayfumo-bot.barn.workshop.home (static; no web backend yet).
 
 ## Completed
 - [ registered in AGENT_OS.md Section 17 ]
