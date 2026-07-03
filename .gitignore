@@ -6,3 +6,4 @@ wayfumo_post.png
 wayfumo_product_*
 xoauth2.txt
 cron_wayfumo.log
+.pytest_cache/
