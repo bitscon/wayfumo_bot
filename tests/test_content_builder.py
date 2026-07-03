@@ -55,3 +55,21 @@ def test_build_store_link_separator_when_base_has_query(monkeypatch):
     monkeypatch.setattr(cb.config, "STORE_BASE_URL", "https://store.example?ref=1")
     link = cb.build_store_link({})
     assert "?ref=1&utm_source=x" in link
+
+
+def test_build_preview_none_when_store_empty(monkeypatch):
+    monkeypatch.setattr(cb.printful_client, "pick_product", lambda s: None)
+    assert cb.build_preview() is None
+
+
+def test_build_preview_returns_details(monkeypatch):
+    prod = {"id": 1, "name": "Dragon Tee", "price": "24.00", "currency": "USD",
+            "image_url": "http://img/x.png", "path_override": None}
+    monkeypatch.setattr(cb.printful_client, "pick_product", lambda s: prod)
+    monkeypatch.setattr(cb.llm_provider, "generate", lambda p: "Buy this now")
+    monkeypatch.setattr(cb.config, "VOICE_MODE", "hype")
+    d = cb.build_preview()
+    assert d["product"] == "Dragon Tee"
+    assert d["image_url"] == "http://img/x.png"
+    assert d["voice"] == "hype"
+    assert "http" in d["link"] and d["tweet"]

@@ -151,15 +151,19 @@ def _fallback_copy(product, voice):
     return f"New drop alert: {name} — {price}. Blink and it's gone. 👀"
 
 
-def build_clickbait_post():
-    """Return (tweet_text, image_path) for a Printful product, or (None, None)."""
+def build_preview():
+    """Assemble the next post's details (no image download). Returns a dict or None.
+
+    The dict has: tweet, image_url, product, price, voice, link — everything
+    needed to render a real preview without posting or downloading anything.
+    """
     try:
         product = printful_client.pick_product(config.PRODUCT_STRATEGY)
     except printful_client.PrintfulError as exc:
         print(f"⚠️  Printful error: {exc}")
-        return None, None
+        return None
     if not product:
-        return None, None
+        return None
 
     voice = _choose_voice()
     template = _load_prompt("roast.txt" if voice == "roast" else "hype.txt")
@@ -170,10 +174,23 @@ def build_clickbait_post():
     copy = llm_provider.generate(prompt) or _fallback_copy(product, voice)
     link = build_store_link(product)
     hashtags = _derive_hashtags(product)
-    tweet = fit_tweet(copy, link, hashtags)
+    return {
+        "tweet": fit_tweet(copy, link, hashtags),
+        "image_url": product.get("image_url"),
+        "product": product["name"],
+        "price": _format_price(product),
+        "voice": voice,
+        "link": link,
+    }
 
-    image_path = download_image(product["image_url"])
-    return tweet, image_path
+
+def build_clickbait_post():
+    """Return (tweet_text, image_path) for a Printful product, or (None, None)."""
+    details = build_preview()
+    if not details:
+        return None, None
+    image_path = download_image(details["image_url"])
+    return details["tweet"], image_path
 
 
 def _effective_len(text, link):

@@ -38,9 +38,10 @@ SELECT_FIELDS = {
     "LLM_PROVIDER": ["ollama", "openrouter"],
 }
 TEXT_FIELDS = ["OLLAMA_MODEL", "OPENROUTER_MODEL", "STORE_BASE_URL", "UTM_CAMPAIGN"]
-# Write-only: set a new value to change; current value is never shown.
+# Write-only API tokens: set a new value to change; current value is never shown.
+# DASHBOARD_PASSWORD is intentionally NOT here — it is changed on /password.
 SECRET_FIELDS = ["PRINTFUL_TOKEN", "OPENROUTER_API_KEY", "X_API_KEY", "X_API_SECRET",
-                 "X_ACCESS_TOKEN", "X_ACCESS_SECRET", "DASHBOARD_PASSWORD"]
+                 "X_ACCESS_TOKEN", "X_ACCESS_SECRET"]
 
 _TRUTHY = {"1", "true", "yes", "on"}
 
@@ -105,6 +106,13 @@ def status():
     }
 
 
+def render_page(preview=None):
+    return render_template_string(
+        TEMPLATE, preview=preview, can_control=can_control(), has_password=bool(_password()),
+        form=env_form(), selects=SELECT_FIELDS, texts=TEXT_FIELDS, secrets=SECRET_FIELDS,
+        messages=get_flashed_messages(), **status())
+
+
 # ---------- writers (mutating; control routes only) ----------
 
 def update_env(changes):
@@ -145,6 +153,11 @@ def update_cadence(oncalendar):
         f.write(new)
     os.replace(tmp, TIMER_UNIT)
     return True
+
+
+def _restart_panel():
+    """Restart this service, detached, so the current response returns first."""
+    _run(["systemd-run", "--user", "--on-active=2", "systemctl", "--user", "restart", "wayfumo-web"])
 
 
 # ---------- auth gate ----------
@@ -193,29 +206,47 @@ def logout():
     return redirect(url_for("login"))
 
 
+@app.route("/password", methods=["GET", "POST"])
+@require_control
+def change_password():
+    error = None
+    if request.method == "POST":
+        cur = request.form.get("current", "")
+        new = request.form.get("new", "")
+        conf = request.form.get("confirm", "")
+        if cur != _password():
+            error = "Current password is incorrect."
+        elif len(new) < 6:
+            error = "New password must be at least 6 characters."
+        elif new != conf:
+            error = "New passwords do not match."
+        else:
+            update_env({"DASHBOARD_PASSWORD": new})
+            _restart_panel()
+            flash("Password changed — it takes effect in a moment. Use it next login.")
+            return redirect(url_for("index"))
+    return render_template_string(PASSWORD_TEMPLATE, error=error)
+
+
 @app.route("/")
 def index():
-    return render_template_string(
-        TEMPLATE, preview=None, can_control=can_control(), has_password=bool(_password()),
-        form=env_form(), selects=SELECT_FIELDS, texts=TEXT_FIELDS, secrets=SECRET_FIELDS,
-        messages=get_flashed_messages(), **status())
+    return render_page()
 
 
 @app.route("/preview", methods=["POST"])
 def preview():
-    """Build the next post in dry-run and show it. Never posts."""
-    result = {"tweet": None, "image": None, "error": None}
+    """Build the next post in dry-run and show a real preview. Never posts."""
     try:
-        tweet, image_path = content_builder.build_clickbait_post()
-        result["tweet"], result["image"] = tweet, image_path
-        if not tweet:
-            result["error"] = "Nothing to preview — Printful store empty or unavailable."
+        details = content_builder.build_preview()
+        if details:
+            details["chars"] = content_builder._effective_len(details["tweet"], details["link"])
+            result = {"post": details, "error": None}
+        else:
+            result = {"post": None,
+                      "error": "No products in the Printful store — add a product to preview a real post."}
     except Exception as exc:  # noqa: BLE001
-        result["error"] = f"Preview failed: {exc}"
-    return render_template_string(
-        TEMPLATE, preview=result, can_control=can_control(), has_password=bool(_password()),
-        form=env_form(), selects=SELECT_FIELDS, texts=TEXT_FIELDS, secrets=SECRET_FIELDS,
-        messages=get_flashed_messages(), **status())
+        result = {"post": None, "error": f"Preview failed: {exc}"}
+    return render_page(preview=result)
 
 
 @app.route("/config", methods=["POST"])
@@ -237,8 +268,7 @@ def save_config():
         _run(["systemctl", "--user", "daemon-reload"])
         _run(["systemctl", "--user", "restart", "wayfumo.timer"])
 
-    # Restart the panel (detached) so it reloads config for previews.
-    _run(["systemd-run", "--user", "--on-active=2", "systemctl", "--user", "restart", "wayfumo-web"])
+    _restart_panel()  # reload config for previews
     flash("Config saved. The bot uses it on its next run; panel is reloading…")
     return redirect(url_for("index"))
 
@@ -258,8 +288,7 @@ def redeploy():
     _run([os.path.join(REPO, "venv/bin/pip"), "install", "-q", "-r",
           os.path.join(REPO, "requirements.txt")], timeout=180)
     _run(["systemctl", "--user", "restart", "wayfumo.timer"])
-    # Restart the panel itself detached so this response returns first.
-    _run(["systemd-run", "--user", "--on-active=2", "systemctl", "--user", "restart", "wayfumo-web"])
+    _restart_panel()
     flash(f"Redeploy: {pull[:200]} — deps checked, bot restarted, panel reloading…")
     return redirect(url_for("index"))
 
@@ -272,7 +301,7 @@ STYLE = """
   body { margin:0; background:#1e1e1e; color:#e8e8e8;
          font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
   header { background:#151515; padding:1rem 1.5rem; border-bottom:2px solid #ff5a36;
-           display:flex; align-items:center; justify-content:space-between; }
+           display:flex; align-items:center; justify-content:space-between; gap:1rem; }
   header .tag { color:#ff5a36; font-weight:700; letter-spacing:.2em; font-size:.75rem; text-transform:uppercase; }
   header h1 { margin:.2rem 0 0; font-size:1.4rem; }
   main { max-width:60rem; margin:0 auto; padding:1.5rem; }
@@ -287,14 +316,22 @@ STYLE = """
   input,select { background:#151515; color:#eee; border:1px solid #444; border-radius:5px; padding:.35rem .5rem; font:inherit; width:100%; box-sizing:border-box; }
   input[type=checkbox]{ width:auto; }
   button { background:#ff5a36; color:#fff; border:0; padding:.5rem 1rem; border-radius:6px; font-weight:700; cursor:pointer; }
-  button.ghost { background:#333; }
+  button.ghost, .btnlink { background:#333; color:#eee; }
+  .btnlink { padding:.5rem 1rem; border-radius:6px; text-decoration:none; font-weight:700; display:inline-block; }
   .row { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; margin-top:.75rem; }
-  .tweet { background:#151515; border-left:3px solid #ff5a36; padding:.75rem 1rem; border-radius:4px; white-space:pre-wrap; }
   .muted { color:#8a8a8a; font-size:.8rem; } code { color:#ffb3a0; }
   .flash { background:#123d1e; color:#bfe; border:1px solid #2a5; padding:.6rem .9rem; border-radius:6px; margin-bottom:1rem; }
   .banner { background:#3d2a12; color:#e0a95a; border:1px solid #7a5; padding:.6rem .9rem; border-radius:6px; margin-bottom:1rem; }
   label.f { display:block; margin:.5rem 0; }
   label.f span { display:block; color:#9a9a9a; font-size:.8rem; margin-bottom:.15rem; }
+  /* preview post card */
+  .postcard { border:1px solid #38404a; background:#15181c; border-radius:14px; padding:1rem 1.15rem; max-width:34rem; }
+  .pchead { display:flex; align-items:center; gap:.6rem; margin-bottom:.6rem; }
+  .pav { width:2.2rem; height:2.2rem; border-radius:50%; background:#ff5a36; color:#fff; font-weight:800;
+         display:grid; place-items:center; }
+  .ptext { white-space:pre-wrap; font-size:1rem; line-height:1.4; }
+  .pimg { display:block; margin-top:.75rem; max-width:100%; border-radius:12px; border:1px solid #333; }
+  .pmeta { margin-top:.6rem; color:#8a8a8a; font-size:.8rem; }
 </style>
 """
 
@@ -313,13 +350,35 @@ LOGIN_TEMPLATE = """
 </section></main></body></html>
 """
 
+PASSWORD_TEMPLATE = """
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width, initial-scale=1"><title>Change password</title>
+""" + STYLE + """</head><body>
+<header><div><div class=tag>WAYFUMO</div><h1>Change password</h1></div>
+  <a class=btnlink href="/">← Back</a></header>
+<main><section style="max-width:26rem;margin:2rem auto">
+  <h2>Change dashboard password</h2>
+  {% if error %}<div class=banner>{{ error }}</div>{% endif %}
+  <form method=post>
+    <label class=f><span>Current password</span><input type=password name=current autofocus></label>
+    <label class=f><span>New password (min 6 chars)</span><input type=password name=new></label>
+    <label class=f><span>Confirm new password</span><input type=password name=confirm></label>
+    <div class=row><button type=submit>Change password</button><a class=btnlink href="/">Cancel</a></div>
+  </form>
+  <p class=muted>The panel restarts briefly after a change; use the new password on your next login.</p>
+</section></main></body></html>
+"""
+
 TEMPLATE = """
 <!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width, initial-scale=1"><title>WAYFUMO control</title>
 """ + STYLE + """</head><body>
 <header>
   <div><div class=tag>WAYFUMO</div><h1>Control panel</h1></div>
-  {% if can_control %}<form method=post action="/logout"><button class=ghost type=submit>Log out</button></form>{% endif %}
+  {% if can_control %}<div class=row style="margin:0">
+    <a class=btnlink href="/password">Change password</a>
+    <form method=post action="/logout"><button class=ghost type=submit>Log out</button></form>
+  </div>{% endif %}
 </header>
 <main>
 
@@ -343,6 +402,23 @@ TEMPLATE = """
   </section>
 
   <section>
+    <h2>Preview next post <span class=muted>· dry-run, never posts</span></h2>
+    <form method=post action="/preview"><button type=submit>Generate preview</button></form>
+    {% if preview %}
+      {% if preview.error %}<p class=muted style="margin-top:1rem">{{ preview.error }}</p>
+      {% else %}{% set p = preview.post %}
+      <div class=postcard style="margin-top:1rem">
+        <div class=pchead><span class=pav>W</span><span><b>WAYFUMO</b> <span class=muted>@wayfumo · now</span></span></div>
+        <div class=ptext>{{ p.tweet }}</div>
+        {% if p.image_url %}<img class=pimg src="{{ p.image_url }}" alt="product mockup" referrerpolicy=no-referrer>{% else %}<p class=muted>(no product image)</p>{% endif %}
+        <div class=pmeta>{{ p.chars }}/280 chars · voice: {{ p.voice }} · {{ p.product }} — {{ p.price }}</div>
+      </div>
+      <p class=muted>This is exactly what would post{% if form.DRY_RUN %} (currently DRY_RUN, so nothing is sent){% endif %}.</p>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  <section>
     <h2>Configuration{% if not can_control %} <span class=muted>(read-only)</span>{% endif %}</h2>
     <form method=post action="/config">
       <fieldset style="border:0;padding:0;margin:0" {% if not can_control %}disabled{% endif %}>
@@ -357,20 +433,13 @@ TEMPLATE = """
         {% endfor %}
         <label class=f><span>Cadence (systemd OnCalendar)</span><input name="cadence" value="{{ form.cadence }}"></label>
 
-        <h2 style="margin-top:1.25rem">Secrets <span class=muted>(leave blank to keep current)</span></h2>
+        <h2 style="margin-top:1.25rem">API tokens <span class=muted>(leave blank to keep current)</span></h2>
         {% for k in secrets %}
         <label class=f><span>{{k}} <span class=muted>· {{ form._secrets[k] }}</span></span><input type=password name="{{k}}" placeholder="•••• (unchanged)"></label>
         {% endfor %}
       </fieldset>
       {% if can_control %}<div class=row><button type=submit>Save &amp; apply</button></div>{% endif %}
     </form>
-  </section>
-
-  <section>
-    <h2>Preview next post <span class=muted>· dry-run, never posts</span></h2>
-    <form method=post action="/preview"><button {% if not has_password or can_control %}{% else %}{% endif %}type=submit>Generate preview</button></form>
-    {% if preview %}{% if preview.error %}<p class=muted style="margin-top:1rem">{{ preview.error }}</p>
-      {% else %}<div class=tweet style="margin-top:1rem">{{ preview.tweet }}</div><p class=muted>Image: {{ preview.image or '(none)' }}</p>{% endif %}{% endif %}
   </section>
 
   <section>
