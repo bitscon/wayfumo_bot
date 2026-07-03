@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Change to project directory
-cd /home/billybs/projects/wayfumo_bot
+# Change to the script's own directory (works wherever the repo is checked out).
+cd "$(dirname "$0")" || exit 1
 
 # Activate venv
 source venv/bin/activate
