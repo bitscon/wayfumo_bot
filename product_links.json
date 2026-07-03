@@ -1,0 +1,4 @@
+{
+  "_comment": "Optional per-product deep links. Map a Printful sync_product id to the storefront path (e.g. product/my-cool-tee). Products not listed here link to the store homepage. Delete this file to disable overrides.",
+  "example_123456": "product/your-product-slug"
+}
