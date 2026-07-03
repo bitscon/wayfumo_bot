@@ -1,6 +1,6 @@
 # ADR-0001: Internal read-only ops dashboard for WAYFUMO
 
-Status: Accepted
+Status: Superseded by ADR-0002
 Date: 2026-07-03
 
 ## Context

@@ -1,7 +1,7 @@
 # PROJECT STATUS
 
 ## Current State
-Registered python-runtime bot; deployed on the barn via systemd user timer, running in DRY_RUN (builds posts, does not post to X). Offline unit test suite passing via `make test-fast`. Internal read-only ops dashboard (Flask/gunicorn, wayfumo-web.service) live on 127.0.0.1:8095, served at http://wayfumo-bot.barn.workshop.home once the nginx proxy flip is applied.
+Registered python-runtime bot; deployed on the barn via systemd user timer, running in DRY_RUN (builds posts, does not post to X). Offline unit test suite passing via `make test-fast`. Password-gated control panel (Flask/gunicorn, wayfumo-web.service) on 127.0.0.1:8095 — edit config, redeploy, run, and monitor the bot; reachable at http://wayfumo-bot.barn.workshop.home once the nginx proxy flip is applied.
 
 ## Completed
 - [ registered in AGENT_OS.md Section 17 ]
@@ -10,6 +10,7 @@ Registered python-runtime bot; deployed on the barn via systemd user timer, runn
 - [ systemd user service + timer installed ]
 - [ test suite added (Makefile test-fast, 21 offline unit tests) ]
 - [ read-only ops dashboard added (webapp.py, ADR-0001) ]
+- [ control panel added — config edit + redeploy + auth (webapp.py, ADR-0002) ]
 
 ## Next Steps
 - Apply the nginx proxy flip (sudo): scratchpad/apply-wayfumo-web-proxy.sh
