@@ -7,3 +7,6 @@ wayfumo_product_*
 xoauth2.txt
 cron_wayfumo.log
 .pytest_cache/
+
+# Local secrets — never commit
+SECRETS.md
